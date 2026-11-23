@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Yerleşim Şablonu</title>
+<style>html{box-sizing:border-box;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0}
+#uygulama{display:flex;flex-direction:column;flex:1;min-height:0}
+#kilit{margin:auto;padding:24px;max-width:340px;display:flex;flex-direction:column;gap:12px;text-align:center}
+#kilit input{font:inherit;min-height:44px;padding:0 12px;border:1px solid var(--cizgi);border-radius:8px;background:var(--kagit);color:var(--murekkep)}
+#kilitNot{color:var(--uyari);min-height:1.2em;margin:0;font-size:13px}</style>
+
+<style>
+/* Yerleşim: tek ekran. Üstte ince durum şeridi, ortada harita, altta parça ekleme şeridi; seçili parça için harita üstünde kayan panel. */
+:root{
+  --zemin:#eef1ea; --kagit:#f8faf5; --murekkep:#1c2922; --soluk:#5d6b62; --cizgi:#c9d2c6;
+  --vurgu:#2b55c9; --vurgu-acik:#dfe7fb; --uyari:#b3261e; --uyari-acik:#f7dcd9;
+  --teras-a:#dfe8cf; --teras-b:#d2dfc4; --sev:#e7dcc3; --agac:#4f8a45; --agac-kes:#c8372d;
+  --bina:#e9d2ac; --bina-cizgi:#5a4226; --havuz:#62b2de; --ana:#b98558; --yardimci:#cfcabd; --yol:#9c968a; --orman:#356b4f; --ben:#1a73e8;
+  --yazi: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sayi: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --zemin:#141a16; --kagit:#1b231e; --murekkep:#e6ece5; --soluk:#9aa89e; --cizgi:#334038;
+  --vurgu:#8fb0ff; --vurgu-acik:#22305a; --uyari:#ff8a80; --uyari-acik:#4a211e;
+  --teras-a:#26331f; --teras-b:#2d3b25; --sev:#3a3324; --agac:#6fae62; --agac-kes:#ff6b5e;
+  --bina:#8a7350; --bina-cizgi:#f0dfc2; --havuz:#3f8fbd; --ana:#a06a3f; --yardimci:#5b584f; --yol:#7b766c; --orman:#5fa57f;
+  color-scheme:dark } }
+:root[data-theme="dark"]{
+  --zemin:#141a16; --kagit:#1b231e; --murekkep:#e6ece5; --soluk:#9aa89e; --cizgi:#334038;
+  --vurgu:#8fb0ff; --vurgu-acik:#22305a; --uyari:#ff8a80; --uyari-acik:#4a211e;
+  --teras-a:#26331f; --teras-b:#2d3b25; --sev:#3a3324; --agac:#6fae62; --agac-kes:#ff6b5e;
+  --bina:#8a7350; --bina-cizgi:#f0dfc2; --havuz:#3f8fbd; --ana:#a06a3f; --yardimci:#5b584f; --yol:#7b766c; --orman:#5fa57f;
+  color-scheme:dark }
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--zemin);color:var(--murekkep);font-family:var(--yazi);font-size:15px;display:flex;flex-direction:column;overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:var(--kagit);border:1px solid var(--cizgi);border-radius:8px;min-height:44px;padding:0 14px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--vurgu);outline-offset:2px}
+button:active{background:var(--vurgu-acik)}
+.ust{display:flex;align-items:center;gap:10px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:var(--kagit);border-bottom:1px solid var(--cizgi)}
+.ust h1{font-size:16px;font-weight:650;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.durum{font-size:12px;color:var(--soluk);white-space:nowrap}
+.durum.sorun{color:var(--uyari)}
+.harita{position:relative;flex:1;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.ozet{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:10px;background:var(--kagit);border:1px solid var(--cizgi);border-radius:8px;padding:6px 10px;
+  font-size:12px;line-height:1.5;color:var(--soluk);pointer-events:none}
+.ozet b{color:var(--murekkep);font-family:var(--sayi);font-weight:600}
+.konum{position:absolute;left:max(12px,env(safe-area-inset-left,0px));top:52px;min-height:40px;font-size:13px;font-weight:600;color:var(--vurgu);border-color:var(--vurgu)}
+.ipucu{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:min(300px,80%);text-align:center;background:var(--kagit);border:1px solid var(--cizgi);
+  border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.45;pointer-events:none}
+.secim{position:absolute;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));bottom:10px;background:var(--kagit);
+  border:1px solid var(--cizgi);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 6px 20px rgb(0 0 0 / .18)}
+.secim-bas{display:flex;align-items:baseline;gap:8px}
+.secim-bas strong{font-size:16px}
+.secim-bas span{font-size:12px;color:var(--soluk);font-family:var(--sayi)}
+.bilgi{font-size:13px;line-height:1.45;color:var(--soluk);margin:0}
+.bilgi .kotu{color:var(--uyari);font-weight:600}
+.sira{display:flex;gap:8px;flex-wrap:wrap}
+.sira button{flex:1 1 60px;padding:0 8px}
+.sil{color:var(--uyari);border-color:var(--uyari)}
+.alt{background:var(--kagit);border-top:1px solid var(--cizgi);padding-block:8px}
+.ekle{display:flex;gap:8px;overflow-x:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+.ekle button{flex:0 0 auto;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ekle i{display:inline-block;width:18px;height:12px;border:1.5px solid var(--bina-cizgi);border-radius:2px;background:var(--bina)}
+.ekle i.havuz{background:var(--havuz)} .ekle i.ana{background:var(--ana)} .ekle i.yrd{background:var(--yardimci)}
+.perde{position:absolute;inset:0;background:rgb(0 0 0 / .35);display:flex;align-items:flex-end;justify-content:center;z-index:5}
+.kagit{background:var(--kagit);width:100%;max-width:520px;border-radius:14px 14px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;gap:10px;max-height:85%;overflow-y:auto}
+.kagit h2{margin:0;font-size:17px}
+.kagit p{margin:0;font-size:14px;line-height:1.5;color:var(--soluk)}
+.kagit textarea{width:100%;box-sizing:border-box;height:140px;font:12px/1.4 var(--sayi);background:var(--zemin);color:var(--murekkep);border:1px solid var(--cizgi);border-radius:8px;padding:8px;
+  -webkit-user-select:text;user-select:text}
+.ana-dugme{background:var(--vurgu);color:var(--kagit);border-color:var(--vurgu);font-weight:600}
+</style>
+</head><body>
+<div id="kilit" hidden><h1 style="font-size:18px;margin:0">Bu sayfa kilitli</h1>
+<p style="margin:0;color:var(--soluk)">Sana verilen bağlantının tamamını ya da anahtarı buraya yapıştır.</p>
+<input id="kilitGiris" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Bağlantı ya da anahtar">
+<button id="kilitAc" class="ana-dugme">Aç</button><p id="kilitNot"></p></div>
+<div id="uygulama" hidden>
+
+<div class="ust">
+  <h1>Bahçe yerleşim şablonu</h1>
+  <span class="durum" id="durum">Yükleniyor…</span>
+  <button id="menuDugme" aria-label="Menü">Menü</button>
+</div>
+
+<div class="harita" id="harita">
+  <canvas id="tuval"></canvas>
+  <div class="ozet" id="ozet"></div>
+  <button class="konum" id="konumDugme" hidden>Konumu aç</button>
+  <div class="ipucu" id="ipucu">Harita boş. Alttaki düğmelerden bina ekle, üstüne dokunup seç, parmağınla sürükle. İki parmakla yakınlaşır ve döner.</div>
+
+  <div class="secim" id="secim" hidden>
+    <div class="secim-bas"><strong id="secAd"></strong><span id="secOlcu"></span></div>
+    <p class="bilgi" id="secBilgi"></p>
+    <div class="sira">
+      <button id="donSol5" aria-label="5 derece sola döndür">⟲ 5°</button>
+      <button id="donSol1" aria-label="1 derece sola döndür">⟲ 1°</button>
+      <button id="donSag1" aria-label="1 derece sağa döndür">1° ⟳</button>
+      <button id="donSag5" aria-label="5 derece sağa döndür">5° ⟳</button>
+    </div>
+    <div class="sira">
+      <button id="buraya" hidden>Konumuma taşı</button>
+      <button id="kopya">Kopyasını ekle</button>
+      <button id="sil" class="sil">Sil</button>
+      <button id="birak" class="ana-dugme">Tamam</button>
+    </div>
+  </div>
+
+  <div class="perde" id="perde" hidden><div class="kagit" id="kagit"></div></div>
+</div>
+
+<div class="alt">
+  <div class="ekle" id="ekle">
+    <button data-tip="ev"><i></i>Ev 11×7</button>
+    <button data-tip="havuz"><i class="havuz"></i>Havuz 7×3,5</button>
+    <button data-tip="ana"><i class="ana"></i>Ana bina 16×9</button>
+    <button data-tip="park"><i class="yrd"></i>Ev parkı 5×5</button>
+    <button data-tip="otopark"><i class="yrd"></i>Otopark 16×5</button>
+    <button data-tip="resepsiyon"><i class="yrd"></i>Resepsiyon 8×6</button>
+    <button data-tip="aritma"><i class="yrd"></i>Arıtma 10×6</button>
+  </div>
+</div>
+
+</div>
+<script>
+let SAHA = null, GEO = null;
+function BASLAT(){
+
+const TIP = {
+  ev:{ad:"Ev", en:11, der:7, renk:"--bina", on:true},
+  havuz:{ad:"Havuz", en:7, der:3.5, renk:"--havuz"},
+  ana:{ad:"Ana bina", en:16, der:9, renk:"--ana", on:true},
+  park:{ad:"Park", en:5, der:5, renk:"--yardimci"},
+  otopark:{ad:"Otopark", en:16, der:5, renk:"--yardimci"},
+  resepsiyon:{ad:"Resepsiyon", en:8, der:6, renk:"--yardimci"},
+  aritma:{ad:"Arıtma", en:10, der:6, renk:"--yardimci"},
+};
+const KESIM_PAYI = 2.0;      // bina kenarına bu kadar yakın ceviz kesilir (m)
+const el = id => document.getElementById(id);
+const tuval = el("tuval"), c = tuval.getContext("2d");
+
+let durum = {parcalar:[], sayac:{}, guncelleme:""};
+let secili = null, agacNo = false, oturumdaDegisti = false;
+let gor = {s:3, ox:0, oy:0, rot:0};    // ekran = merkez + döndür(rot) * ölçek; rot radyan, saat yönünün tersine
+
+/* ---------- geometri ---------- */
+function koseler(p, pay){
+  const t = TIP[p.tip], a = p.aci*Math.PI/180, co = Math.cos(a), si = Math.sin(a), w = t.en/2 + (pay||0), d = t.der/2 + (pay||0);
+  return [[-w,-d],[w,-d],[w,d],[-w,d]].map(([x,y]) => [p.x + x*co - y*si, p.y + x*si + y*co]);
+}
+function icinde(pt, poli){
+  let ic = false;
+  for(let i=0, j=poli.length-1; i<poli.length; j=i++){
+    const a = poli[i], b = poli[j];
+    if((a[1] > pt[1]) !== (b[1] > pt[1]) && pt[0] < (b[0]-a[0])*(pt[1]-a[1])/(b[1]-a[1]) + a[0]) ic = !ic;
+  }
+  return ic;
+}
+function noktaParca(pt, a, b){
+  const dx = b[0]-a[0], dy = b[1]-a[1], l = dx*dx + dy*dy;
+  let t = l ? ((pt[0]-a[0])*dx + (pt[1]-a[1])*dy)/l : 0; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(pt[0]-a[0]-t*dx, pt[1]-a[1]-t*dy);
+}
+function poliUzaklik(A, B){
+  if(A.some(p => icinde(p, B)) || B.some(p => icinde(p, A))) return 0;
+  let m = Infinity;
+  for(let i=0;i<A.length;i++) for(let j=0;j<B.length;j++){
+    m = Math.min(m, noktaParca(A[i], B[j], B[(j+1)%B.length]), noktaParca(B[j], A[i], A[(i+1)%A.length]));
+  }
+  return m;
+}
+function kesilenler(p){
+  const K = koseler(p, KESIM_PAYI);
+  return SAHA.agac.filter(a => icinde([a[1], a[2]], K)).map(a => a[0]);
+}
+function terasBul(p){
+  for(const t of SAHA.teras) if(icinde([p.x, p.y], t.pts)) return t;
+  return null;
+}
+
+/* ---------- çizim ---------- */
+function renk(ad){ return getComputedStyle(document.documentElement).getPropertyValue(ad).trim(); }
+function E(x, y){ const co = Math.cos(gor.rot), si = Math.sin(gor.rot); return [gor.ox + (x*co - y*si)*gor.s, gor.oy - (x*si + y*co)*gor.s]; }
+function yol(pts, kapat){
+  c.beginPath();
+  pts.forEach((p, i) => { const [x, y] = E(p[0], p[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+  if(kapat) c.closePath();
+}
+function boyutla(){
+  const r = tuval.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  tuval.width = Math.round(r.width*dpr); tuval.height = Math.round(r.height*dpr);
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return r;
+}
+function sigdir(){
+  const r = tuval.getBoundingClientRect();
+  const co = Math.cos(gor.rot), si = Math.sin(gor.rot);
+  const xs = SAHA.sinir.map(p => p[0]*co - p[1]*si), ys = SAHA.sinir.map(p => p[0]*si + p[1]*co);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  gor.s = Math.min((r.width-24)/(x1-x0), (r.height-24)/(y1-y0));
+  gor.ox = r.width/2 - (x0+x1)/2*gor.s; gor.oy = r.height/2 + (y0+y1)/2*gor.s;
+}
+function ciz(){
+  const r = tuval.getBoundingClientRect();
+  c.clearRect(0, 0, r.width, r.height);
+  const R = {};
+  ["--zemin","--kagit","--murekkep","--soluk","--cizgi","--vurgu","--uyari","--teras-a","--teras-b","--sev","--agac","--agac-kes","--bina-cizgi","--yol","--orman"].forEach(k => R[k] = renk(k));
+  // arazi (şev rengi) + teraslar
+  yol(SAHA.sinir, true); c.fillStyle = R["--sev"]; c.fill();
+  SAHA.teras.forEach((t, i) => { yol(t.pts, true); c.fillStyle = R[i%2 ? "--teras-b" : "--teras-a"]; c.fill(); });
+  // orman çekme şeridi
+  c.save(); c.globalAlpha = .28; c.fillStyle = R["--orman"];
+  SAHA.cekme.forEach(p => { yol(p, true); c.fill(); }); c.restore();
+  SAHA.orman.forEach(l => { yol(l); c.strokeStyle = R["--orman"]; c.lineWidth = 2; c.stroke(); });
+  // yollar
+  c.lineCap = "round"; c.lineJoin = "round";
+  SAHA.hamyol.forEach(l => { yol(l); c.strokeStyle = R["--yol"]; c.lineWidth = Math.max(1.5, 3*gor.s); c.setLineDash([6, 6]); c.stroke(); c.setLineDash([]); });
+  SAHA.myol.forEach(l => { yol(l); c.strokeStyle = R["--yol"]; c.lineWidth = Math.max(2, 3.5*gor.s); c.stroke(); });
+  yol(SAHA.sinir, true); c.strokeStyle = R["--murekkep"]; c.lineWidth = 1.5; c.stroke();
+  // mevcut ev
+  yol(SAHA.mev, true); c.fillStyle = R["--uyari"]; c.globalAlpha = .55; c.fill(); c.globalAlpha = 1; c.strokeStyle = R["--murekkep"]; c.lineWidth = 1; c.stroke();
+  // ağaçlar
+  const kes = new Set(); durum.parcalar.forEach(p => { if(p.tip !== "park" || true) kesilenler(p).forEach(k => kes.add(k)); });
+  const rr = Math.max(1.6, 2.2*gor.s);
+  SAHA.agac.forEach(a => {
+    const [x, y] = E(a[1], a[2]); const k = kes.has(a[0]);
+    c.beginPath(); c.arc(x, y, rr, 0, 6.2832); c.fillStyle = R[k ? "--agac-kes" : "--agac"]; c.globalAlpha = k ? .95 : .7; c.fill(); c.globalAlpha = 1;
+    if(agacNo && gor.s > 5){ c.fillStyle = R["--murekkep"]; c.font = "10px " + renk("--sayi"); c.textAlign = "center"; c.fillText(a[0], x, y + 3); }
+  });
+  // teras adları
+  if(gor.s > 1.6){
+    c.font = "600 12px " + renk("--yazi"); c.textAlign = "center"; c.fillStyle = R["--soluk"];
+    SAHA.teras.forEach(t => {
+      const cx = t.pts.reduce((s, p) => s + p[0], 0)/t.pts.length, cy = t.pts.reduce((s, p) => s + p[1], 0)/t.pts.length;
+      const [x, y] = E(cx, cy); c.fillText(t.ad + " · " + String(t.kot).replace(".", ",") + " m", x, y);
+    });
+    const m = SAHA.mev.reduce((s, p) => [s[0]+p[0]/SAHA.mev.length, s[1]+p[1]/SAHA.mev.length], [0, 0]);
+    const [mx, my] = E(m[0], m[1]); c.fillStyle = R["--murekkep"]; c.fillText("mevcut ev", mx, my + 4);
+  }
+  // parçalar
+  durum.parcalar.forEach(p => {
+    const t = TIP[p.tip], K = koseler(p), sec = p.id === secili;
+    yol(K, true); c.fillStyle = renk(t.renk); c.globalAlpha = .92; c.fill(); c.globalAlpha = 1;
+    c.strokeStyle = sec ? R["--vurgu"] : R["--bina-cizgi"]; c.lineWidth = sec ? 3 : 1.5; c.stroke();
+    if(t.on){   // ön cephe (manzara tarafı): kalın çizgi + küçük ok
+      const a = E(K[0][0], K[0][1]), b = E(K[1][0], K[1][1]);
+      c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.strokeStyle = sec ? R["--vurgu"] : R["--bina-cizgi"]; c.lineWidth = sec ? 5 : 4; c.stroke();
+      const an = p.aci*Math.PI/180, ux = Math.sin(an), uy = -Math.cos(an);
+      const o = E(p.x + ux*(t.der/2), p.y + uy*(t.der/2)), u = E(p.x + ux*(t.der/2 + 3), p.y + uy*(t.der/2 + 3));
+      c.beginPath(); c.moveTo(o[0], o[1]); c.lineTo(u[0], u[1]); c.lineWidth = 2; c.stroke();
+    }
+    if(gor.s > 2.2){
+      const [x, y] = E(p.x, p.y); c.fillStyle = R["--murekkep"]; c.font = "600 " + Math.min(14, Math.max(10, 2.2*gor.s)) + "px " + renk("--yazi"); c.textAlign = "center";
+      c.fillText(p.ad, x, y + 4);
+    }
+  });
+  if(konum){
+    const [kx0, ky0] = E(konum.x, konum.y), ben = renk("--ben");
+    c.beginPath(); c.arc(kx0, ky0, Math.max(8, konum.d*gor.s), 0, 6.2832); c.fillStyle = ben; c.globalAlpha = .16; c.fill(); c.globalAlpha = 1;
+    c.beginPath(); c.arc(kx0, ky0, 7, 0, 6.2832); c.fillStyle = R["--kagit"]; c.fill();
+    c.beginPath(); c.arc(kx0, ky0, 5, 0, 6.2832); c.fillStyle = ben; c.fill();
+  }
+  // ölçek + kuzey
+  const adaylar = [5, 10, 20, 50, 100]; const uz = adaylar.find(v => v*gor.s > 70) || 100;
+  const bx = r.width - 16 - uz*gor.s, by = r.height - (el("secim").hidden ? 18 : 18);
+  if(el("secim").hidden){
+    c.strokeStyle = R["--murekkep"]; c.lineWidth = 2; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + uz*gor.s, by); c.moveTo(bx, by-4); c.lineTo(bx, by+4);
+    c.moveTo(bx + uz*gor.s, by-4); c.lineTo(bx + uz*gor.s, by+4); c.stroke();
+    c.fillStyle = R["--murekkep"]; c.font = "11px " + renk("--sayi"); c.textAlign = "right"; c.fillText(uz + " m", bx + uz*gor.s, by - 8);
+  }
+  const nx = r.width - 30, ny = 34, kco = Math.cos(gor.rot), ksi = Math.sin(gor.rot), kx = SAHA.kuzey[0]*kco - SAHA.kuzey[1]*ksi, ky = -(SAHA.kuzey[0]*ksi + SAHA.kuzey[1]*kco);
+  c.strokeStyle = R["--murekkep"]; c.fillStyle = R["--murekkep"]; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(nx - kx*14, ny - ky*14); c.lineTo(nx + kx*14, ny + ky*14); c.stroke();
+  c.beginPath(); c.moveTo(nx + kx*18, ny + ky*18); c.lineTo(nx + kx*8 - ky*5, ny + ky*8 + kx*5); c.lineTo(nx + kx*8 + ky*5, ny + ky*8 - kx*5); c.closePath(); c.fill();
+  c.font = "600 11px " + renk("--yazi"); c.textAlign = "center"; c.fillText("K", nx + kx*27, ny + ky*27 + 4);
+  ozetYaz(kes.size);
+}
+function ozetYaz(kesSay){
+  const say = t => durum.parcalar.filter(p => p.tip === t).length;
+  el("ozet").innerHTML = "Ev <b>" + say("ev") + "</b> · Havuz <b>" + say("havuz") + "</b> · Kesilecek ceviz <b>" + kesSay + "</b>";
+  el("ipucu").hidden = durum.parcalar.length > 0;
+}
+
+/* ---------- seçim paneli ---------- */
+function seciliParca(){ return durum.parcalar.find(p => p.id === secili) || null; }
+function paneliYaz(){
+  const p = seciliParca(); el("secim").hidden = !p; el("buraya").hidden = !konum;
+  if(!p){ ciz(); return; }
+  const t = TIP[p.tip];
+  el("secAd").textContent = p.ad;
+  el("secOlcu").textContent = String(t.en).replace(".", ",") + " × " + String(t.der).replace(".", ",") + " m · " + Math.round(((p.aci % 360) + 360) % 360) + "°";
+  const sat = [], ter = terasBul(p);
+  // köşelerin hepsi aynı terasta mı
+  const K = koseler(p), hepsi = ter && K.every(k => icinde(k, ter.pts));
+  if(ter && hepsi) sat.push("Teras " + ter.ad + " (" + String(ter.kot).replace(".", ",") + " m)");
+  else if(ter) sat.push('<span class="kotu">Teras ' + ter.ad + " kenarından şeve taşıyor</span>");
+  else sat.push('<span class="kotu">Teras dışında (şev ya da yol)</span>');
+  if(!K.every(k => icinde(k, SAHA.sinir))) sat.push('<span class="kotu">Arazi sınırının dışına taşıyor</span>');
+  if(p.tip !== "park" && p.tip !== "otopark" && SAHA.cekme.some(g => K.some(k => icinde(k, g)))) sat.push('<span class="kotu">Orman çekme şeridinde (10 m)</span>');
+  const ks = kesilenler(p); sat.push(ks.length ? '<span class="kotu">' + ks.length + " ceviz kesilir</span> (no " + ks.join(", ") + ")" : "Ceviz kesilmiyor");
+  if(p.tip === "ev" || p.tip === "ana"){
+    let en = Infinity, kim = "";
+    durum.parcalar.forEach(q => { if(q.id !== p.id && (q.tip === "ev" || q.tip === "ana")){ const d = poliUzaklik(K, koseler(q)); if(d < en){ en = d; kim = q.ad; } } });
+    const dm = poliUzaklik(K, SAHA.mev); if(dm < en){ en = dm; kim = "mevcut ev"; }
+    if(isFinite(en)) sat.push((en < 6.5 ? '<span class="kotu">' : "<span>") + "En yakın bina: " + kim + ", " + en.toFixed(1).replace(".", ",") + " m</span>");
+  }
+  el("secBilgi").innerHTML = sat.join(" · ");
+  ciz();
+}
+
+/* ---------- durum değişiklikleri ---------- */
+function yeniId(){ return "p" + Date.now().toString(36) + Math.floor(Math.random()*1e4).toString(36); }
+function ekle(tip, x, y, aci, ad){
+  durum.sayac[tip] = (durum.sayac[tip] || 0) + 1;
+  const p = {id:yeniId(), tip, ad: ad || (TIP[tip].ad + " " + durum.sayac[tip]), x:+x.toFixed(2), y:+y.toFixed(2), aci: aci || 0};
+  durum.parcalar.push(p); secili = p.id; degisti(); paneliYaz();
+}
+function degisti(){
+  oturumdaDegisti = true; durum.guncelleme = new Date().toISOString();
+  try{ localStorage.setItem("bahce-sablon", JSON.stringify(durum)); }catch(e){}
+  kaydetPlanla();
+}
+
+/* ---------- kayıt: db (Claude okuyabilir) + telefon yedeği ---------- */
+let db = null, ref = null, kaydediyor = false, kirli = false, zamanlayici = null;
+function durumYaz(m, sorun){ const d = el("durum"); d.textContent = m; d.classList.toggle("sorun", !!sorun); }
+function kaydetPlanla(){
+  if(!ref){ durumYaz("Yalnız bu telefonda kayıtlı", false); return; }
+  kirli = true; durumYaz("Kaydediliyor…"); clearTimeout(zamanlayici); zamanlayici = setTimeout(kaydet, 1200);
+}
+async function kaydet(){
+  if(!ref || kaydediyor || !kirli) return;
+  kaydediyor = true; kirli = false;
+  try{
+    await ref.set(JSON.parse(JSON.stringify(durum)));
+    if(!kirli) durumYaz("Kaydedildi");
+  }catch(e){
+    kirli = true;
+    durumYaz(e && e.code === "invalid_argument" ? "Kaydedilemedi (yazma izni yok)" : "Bağlantı yok, telefonda duruyor", true);
+    if(!(e && e.code === "invalid_argument")){ clearTimeout(zamanlayici); zamanlayici = setTimeout(kaydet, 15000); }
+  }
+  kaydediyor = false;
+  if(kirli && !zamanlayici) zamanlayici = setTimeout(kaydet, 1200);
+}
+function gecerli(d){ return d && Array.isArray(d.parcalar) && d.parcalar.every(p => TIP[p.tip] && isFinite(p.x) && isFinite(p.y)); }
+async function yukle(){
+  try{ const y = JSON.parse(localStorage.getItem("bahce-sablon") || "null"); if(gecerli(y)){ durum = y; durum.sayac = durum.sayac || {}; } }catch(e){}
+  paneliYaz();
+  try{
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+    if(!db){ durumYaz("Yalnız bu telefonda kayıtlı"); return; }
+    ref = db.doc("plan/guncel");
+    const snap = await Promise.race([ref.get(), new Promise((_, r) => setTimeout(() => r({code:"zaman"}), 10000))]);
+    const uz = snap.exists ? snap.data() : null;
+    if(gecerli(uz) && !oturumdaDegisti && String(uz.guncelleme || "") >= String(durum.guncelleme || "")){
+      durum = JSON.parse(JSON.stringify(uz)); durum.sayac = durum.sayac || {};
+      if(!seciliParca()) secili = null;
+      paneliYaz(); durumYaz("Kaydedildi");
+    }else if(durum.parcalar.length || oturumdaDegisti){ kirli = true; kaydet(); }
+    else durumYaz("Hazır");
+  }catch(e){ durumYaz("Bağlantı yok, telefonda duruyor", true); if(ref){ kirli = true; zamanlayici = setTimeout(kaydet, 15000); } }
+}
+
+/* ---------- dokunma: seçili parçayı sürükle, boşta kaydır, iki parmakla yakınlaş ---------- */
+const isaretler = new Map(); let surukle = null, kaydir = null, tutam = null, oynadi = false;
+function dunya(ex, ey){ const u = (ex - gor.ox)/gor.s, v = (gor.oy - ey)/gor.s, co = Math.cos(gor.rot), si = Math.sin(gor.rot); return [u*co + v*si, -u*si + v*co]; }
+function yer(e){ const r = tuval.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function vurulan(w){
+  const pay = Math.max(0, 14/gor.s - 2);      // küçük parçalar için parmak payı
+  for(let i = durum.parcalar.length - 1; i >= 0; i--) if(icinde(w, koseler(durum.parcalar[i], pay))) return durum.parcalar[i];
+  return null;
+}
+tuval.addEventListener("pointerdown", e => {
+  dokunuldu = true;
+  tuval.setPointerCapture(e.pointerId); const p = yer(e); isaretler.set(e.pointerId, p); oynadi = false;
+  if(isaretler.size === 2){
+    const [a, b] = [...isaretler.values()]; surukle = null; kaydir = null;
+    tutam = {d: Math.hypot(a[0]-b[0], a[1]-b[1]), s: gor.s, rot: gor.rot, a: Math.atan2(b[1]-a[1], b[0]-a[0]), w: dunya((a[0]+b[0])/2, (a[1]+b[1])/2)};
+  }else if(isaretler.size === 1){
+    const w = dunya(p[0], p[1]), v = vurulan(w), s = seciliParca();
+    if(s && v && v.id === s.id) surukle = {dx: s.x - w[0], dy: s.y - w[1]};
+    else kaydir = {x: p[0], y: p[1], ox: gor.ox, oy: gor.oy};
+  }
+});
+tuval.addEventListener("pointermove", e => {
+  if(!isaretler.has(e.pointerId)) return;
+  const p = yer(e), eski = isaretler.get(e.pointerId); isaretler.set(e.pointerId, p);
+  if(Math.hypot(p[0]-eski[0], p[1]-eski[1]) > 0.5) oynadi = oynadi || (kaydir ? Math.hypot(p[0]-kaydir.x, p[1]-kaydir.y) > 6 : true);
+  if(tutam && isaretler.size === 2){
+    const [a, b] = [...isaretler.values()], d = Math.hypot(a[0]-b[0], a[1]-b[1]), m = [(a[0]+b[0])/2, (a[1]+b[1])/2];
+    let da = Math.atan2(b[1]-a[1], b[0]-a[0]) - tutam.a; while(da > Math.PI) da -= 2*Math.PI; while(da < -Math.PI) da += 2*Math.PI;
+    if(!tutam.doner && Math.abs(da) > 0.12) tutam.doner = true;      // küçük titremede harita dönmesin
+    gor.s = Math.max(0.8, Math.min(40, tutam.s*d/tutam.d)); gor.rot = tutam.doner ? tutam.rot - da : tutam.rot;
+    const co = Math.cos(gor.rot), si = Math.sin(gor.rot), wx = tutam.w[0], wy = tutam.w[1];     // parmakların ortasındaki nokta yerinde kalsın
+    gor.ox = m[0] - (wx*co - wy*si)*gor.s; gor.oy = m[1] + (wx*si + wy*co)*gor.s; ciz();
+  }else if(surukle){
+    const s = seciliParca(), w = dunya(p[0], p[1]); if(!s) return;
+    s.x = +(w[0] + surukle.dx).toFixed(2); s.y = +(w[1] + surukle.dy).toFixed(2); surukle.oynadi = true; paneliYaz();
+  }else if(kaydir){ gor.ox = kaydir.ox + p[0] - kaydir.x; gor.oy = kaydir.oy + p[1] - kaydir.y; ciz(); }
+});
+function birakIsaret(e){
+  if(!isaretler.has(e.pointerId)) return;
+  const p = isaretler.get(e.pointerId); isaretler.delete(e.pointerId);
+  if(surukle && surukle.oynadi) degisti();
+  else if(!tutam && !oynadi && e.type === "pointerup"){     // dokunuş: seç / seçimi bırak
+    const v = vurulan(dunya(p[0], p[1])); secili = v ? v.id : null; paneliYaz();
+  }
+  if(isaretler.size < 2) tutam = null;
+  if(isaretler.size === 0){ surukle = null; kaydir = null; }
+}
+tuval.addEventListener("pointerup", birakIsaret); tuval.addEventListener("pointercancel", birakIsaret);
+tuval.addEventListener("wheel", e => {
+  e.preventDefault(); const p = yer(e), w = dunya(p[0], p[1]), s = Math.max(0.8, Math.min(40, gor.s*Math.exp(-e.deltaY*0.0015)));
+  const co = Math.cos(gor.rot), si = Math.sin(gor.rot);
+  gor.s = s; gor.ox = p[0] - (w[0]*co - w[1]*si)*s; gor.oy = p[1] + (w[0]*si + w[1]*co)*s; ciz();
+}, {passive:false});
+
+/* ---------- konum (yalnız web adresindeki sürümde) ---------- */
+let konum = null, izliyor = false;
+function enlemdenYerel(lat, lon){      // WGS84 -> 3° TM (orta meridyen GEO.lon0) -> yerel çerçeve
+  const a = 6378137, f = 1/298.257222101, e2 = f*(2-f), ep2 = e2/(1-e2), fi = lat*Math.PI/180, la = (lon - GEO.lon0)*Math.PI/180;
+  const N = a/Math.sqrt(1 - e2*Math.sin(fi)**2), T = Math.tan(fi)**2, C = ep2*Math.cos(fi)**2, A = la*Math.cos(fi);
+  const M = a*((1 - e2/4 - 3*e2*e2/64 - 5*e2**3/256)*fi - (3*e2/8 + 3*e2*e2/32 + 45*e2**3/1024)*Math.sin(2*fi)
+            + (15*e2*e2/256 + 45*e2**3/1024)*Math.sin(4*fi) - (35*e2**3/3072)*Math.sin(6*fi));
+  const X = 500000 + N*(A + (1 - T + C)*A**3/6 + (5 - 18*T + T*T + 72*C - 58*ep2)*A**5/120);
+  const Y = M + N*Math.tan(fi)*(A*A/2 + (5 - T + 9*C + 4*C*C)*A**4/24 + (61 - 58*T + T*T + 600*C - 330*ep2)*A**6/720);
+  const dx = X - GEO.c0[0], dy = Y - GEO.c0[1];
+  return [GEO.R[0][0]*dx + GEO.R[0][1]*dy, GEO.R[1][0]*dx + GEO.R[1][1]*dy];
+}
+function konumaGit(){ if(!konum) return; const r = tuval.getBoundingClientRect(), e = E(konum.x, konum.y); gor.ox += r.width/2 - e[0]; gor.oy += r.height*0.45 - e[1]; ciz(); }
+function konumBaslat(){
+  const d = el("konumDugme");
+  if(izliyor){ konumaGit(); return; }
+  izliyor = true; d.textContent = "Konum aranıyor…";
+  navigator.geolocation.watchPosition(p => {
+    const w = enlemdenYerel(p.coords.latitude, p.coords.longitude), ilk = !konum;
+    konum = {x: w[0], y: w[1], d: p.coords.accuracy || 5};
+    const uzak = !icinde(w, SAHA.sinir) && Math.min(...SAHA.sinir.map(q => Math.hypot(q[0]-w[0], q[1]-w[1]))) > 150;
+    d.textContent = uzak ? "Arazinin dışındasın" : "Konumum ±" + Math.round(konum.d) + " m";
+    el("buraya").hidden = !seciliParca(); if(ilk && !uzak) konumaGit(); else ciz();
+  }, e => { izliyor = e.code !== 1 && izliyor; d.textContent = e.code === 1 ? "Konum izni verilmedi" : "Konum alınamadı, yeniden dene"; if(e.code !== 1) izliyor = false; },
+  {enableHighAccuracy: true, maximumAge: 2000, timeout: 20000});
+}
+if(GEO && navigator.geolocation){ el("konumDugme").hidden = false; el("konumDugme").onclick = konumBaslat; }
+el("buraya").onclick = () => { const p = seciliParca(); if(!p || !konum) return; p.x = +konum.x.toFixed(2); p.y = +konum.y.toFixed(2); degisti(); paneliYaz(); };
+
+/* ---------- düğmeler ---------- */
+el("ekle").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tip]"); if(!b) return;
+  const r = tuval.getBoundingClientRect(), w = dunya(r.width/2, r.height*0.4), s = seciliParca();
+  ekle(b.dataset.tip, w[0], w[1], s ? s.aci : 0);
+});
+function dondur(d){ const p = seciliParca(); if(!p) return; p.aci = +(((p.aci + d) % 360 + 360) % 360).toFixed(1); degisti(); paneliYaz(); }
+el("donSol5").onclick = () => dondur(5); el("donSol1").onclick = () => dondur(1);
+el("donSag1").onclick = () => dondur(-1); el("donSag5").onclick = () => dondur(-5);
+el("sil").onclick = () => { durum.parcalar = durum.parcalar.filter(p => p.id !== secili); secili = null; degisti(); paneliYaz(); };
+el("kopya").onclick = () => { const p = seciliParca(); if(p) ekle(p.tip, p.x + 6, p.y - 4, p.aci); };
+el("birak").onclick = () => { secili = null; paneliYaz(); };
+
+function kagitAc(html){ el("kagit").innerHTML = html; el("perde").hidden = false; }
+function kagitKapat(){ el("perde").hidden = true; }
+el("perde").addEventListener("click", e => { if(e.target === el("perde")) kagitKapat(); });
+function menu(){
+  kagitAc('<h2>Menü</h2>' +
+    '<button id="mD4">Hazır planı (D4) yükle</button>' +
+    '<button id="mNo">' + (agacNo ? "Ceviz numaralarını gizle" : "Ceviz numaralarını göster") + '</button>' +
+    '<button id="mSig">Tüm araziyi göster</button>' +
+    '<button id="mKuzey">Kuzeyi yukarı al</button>' +
+    '<button id="mManzara">Manzarayı aşağı al (ilk hali)</button>' +
+    '<button id="mMetin">Yerleşimi metin olarak al</button>' +
+    '<button id="mTemiz" class="sil">Hepsini temizle</button>' +
+    '<button id="mKapat" class="ana-dugme">Kapat</button>');
+  el("mKapat").onclick = kagitKapat;
+  el("mNo").onclick = () => { agacNo = !agacNo; kagitKapat(); ciz(); };
+  el("mSig").onclick = () => { sigdir(); kagitKapat(); ciz(); };
+  el("mKuzey").onclick = () => { gor.rot = Math.PI/2 - Math.atan2(SAHA.kuzey[1], SAHA.kuzey[0]); sigdir(); kagitKapat(); ciz(); };
+  el("mManzara").onclick = () => { gor.rot = 0; sigdir(); kagitKapat(); ciz(); };
+  el("mD4").onclick = () => onay("Hazır plan yüklensin mi?", "Haritadaki " + durum.parcalar.length + " parça silinir, yerine D4 planındaki evler, havuzlar ve ana bina gelir. Sonra istediğini oynatırsın.", "Yükle", () => {
+    durum.parcalar = SAHA.d4.map(p => ({id: yeniId(), tip: p.tip, ad: p.ad, x: p.x, y: p.y, aci: p.aci}));
+    durum.sayac = {ev: 13, havuz: 6, ana: 2, otopark: 1, resepsiyon: 1, aritma: 1}; secili = null; degisti(); paneliYaz();
+  });
+  el("mTemiz").onclick = () => onay("Hepsi silinsin mi?", "Haritadaki " + durum.parcalar.length + " parça silinir. Geri alınamaz.", "Sil", () => {
+    durum.parcalar = []; durum.sayac = {}; secili = null; degisti(); paneliYaz();
+  });
+  el("mMetin").onclick = () => {
+    const sat = durum.parcalar.map(p => [p.ad, p.tip, p.x.toFixed(1), p.y.toFixed(1), p.aci].join("; ")).join("\n");
+    kagitAc('<h2>Yerleşim metni</h2><p>Her satır: ad; tür; x; y; açı. Kopyalayıp Claude\'a yapıştırabilirsin.</p><textarea id="metin" readonly></textarea>' +
+      '<button id="mKopya" class="ana-dugme">Kopyala</button><button id="mKapat2">Kapat</button>');
+    el("metin").value = sat || "(boş)";
+    el("mKapat2").onclick = kagitKapat;
+    el("mKopya").onclick = async () => {
+      try{ await navigator.clipboard.writeText(el("metin").value); el("mKopya").textContent = "Kopyalandı"; }
+      catch(e){ el("metin").focus(); el("metin").select(); el("mKopya").textContent = "Metni seçtim, elle kopyala"; }
+    };
+  };
+}
+function onay(baslik, metin, evet, is){
+  kagitAc("<h2>" + baslik + "</h2><p>" + metin + '</p><button id="oEvet" class="ana-dugme">' + evet + '</button><button id="oHayir">Vazgeç</button>');
+  el("oEvet").onclick = () => { kagitKapat(); is(); }; el("oHayir").onclick = kagitKapat;
+}
+el("menuDugme").onclick = menu;
+
+/* ---------- başlat ---------- */
+let dokunuldu = false;
+function yenidenBoyutla(){ boyutla(); if(!dokunuldu) sigdir(); ciz(); }
+new ResizeObserver(yenidenBoyutla).observe(el("harita"));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ciz);
+new MutationObserver(ciz).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+boyutla(); sigdir(); yukle();
+
+}
+const KILIT = {iv: "dzZ1FXPWpA0dcqHq", veri: "H6LlbMlAwZiID4zxcOuwT4JSI9MPyrct8otO26JCGaSDvOq3ojK5A7zdzRU4L8jOSYFGrc-MLKNaFNhnx53XkYkWSCI2q_XqJddJFeRysHfOd9NJuPWbE-Jz_PnKG5ELKWUSsJXl8FgRaMenR5-wohEkYobrk5JBTgLAulvdW7fpTAYf-NM4KLWX4p_R0UVl69A3graJMsXw_-IrmiD-9GOCmavgkgHV0swxkdIzMNFVCOKyDpAmXFQDWkGZRJeWCst5t5JxGxhJ4uk0hNdMa5SW4LGFigabGP-O44OW7_dKzhJBW3hAmFc2ZbsKqsZkoHr1u_AKIS-gpeDmIpvmcphBi2J3EsKECrJzLsjCMWI5aIatObCfc4olxrpk5uWmbfPJu15gNDw6yYaPP9s1YZBaFshfLlhme7RneNrAd3tFOCzEcDxsyIrQb1pnmwGXoc1gnaqx_dEHgbkGfAn5PmabFNCmS2e9tE-y3XfXKX__dcRIYIfvwPS73WTAHQ6k_Fm8AcwWWe3HFDGKyH8rDn1NKNchsaGC6E3ahOqBD0Ls7nAvP2fTqqZYNyM2Hs1VXG2w1oIHBXq8otkjS5STy66DP-7vqQcQJrH-FyJ5vJNzuhubZGNcg4dLKpM96NEuWdgGJCrt6dgr3FKjlMVYn6M0m3x6s7V0_wZqeAMzUAE2M9sQ8NE0FpQmfmSv2-Eq1gcYzD0KoToFAg3uxWQsmR_zUc_CK9pauYhQ9lnpZ_761gHCazRArsmWhrjH78yOY4Xub6-piB_Ki5Z0MtmIT3EPUQynZGYBmJeciDbLnJK5OnQpjaowiTqQ22Xc0HP5UfVQb9dFma9HwNyjYAq2d-gXXYw40yPkSFKITTGMCcwokhM3bdHixaNMdSwAz0QC9hjsrgZq8a1-U20Q2tpn5jIT5NUMLK0FT7Com4Gr3Ob4kpkxokzmjlBgX5N23CL4rzBFcEyU8NK-N_wuRy-HVfXlz_FuM_17nQLMS_yCux0LAKLWCzqlEcOFkSUkVsIGYwLVem9xgjpFNTMubqTQf5bM7xd7YsFgBBVpr5O72IscCDDxQvWi8Se0DTetZ5N7_PfLkKLdG70uXk-XinegdHMITuSjjREPvZ518RlCY0RnBgBFyi1sVzZZa6gwVki6LKrCXSPKuidRnc_LixxyNgxvQrQN4KGLOnySOv_IbmB9PxADoX94EUxOXCRxcy-WaW-2VMrC60o6fzfXNFxboOIHg7qh4LBIrya_DeTSKkkfLEACROwVmhKoRB87T3zG6kuvshCA03QhyOBaXG4TqZo4gpPvOeXN8Y12U-3cFibW2dOUs2CcB53c9nqDnsMHO1JBU-2WIPw_r246qPd47h38cJ7z_HEHeA4tRKgVv9vg2HNXkrqtdKEb2Uh3CnuY7pmz30fgbrUF7IrJmWh53liqnn6ljN4LsCM2YADcIBNNpM-FWLJDszbglrvgIu-TPCo1l7McBjndsoD79agQFFhxZ0MeUT8dCE1mB2spaSGqGaj2lL2Cf4r_iLaBA6mZyXWCay6tzkhTMLO3r-JyyvTuNH3zbtaabnbo5UAlDLwEmCLtAQODJN3mAwBF4yQWaS8RnHAkdDP8VfLa46fPJ4p-AxJFAlZo7BLreMraVAo0MGpC40Fr5CsEV6e9nEaICycfA7Zlu3G9z4IwUPsWZ8kJMzmi1sKAAc_lfG_j_RyzSbkYneEUp7bnQU5x7lozBWO8bzHRbtIEWrXTT9CotfesC5dubzQILHq5uXbzPhHYs0hdJIdmS_gjRN_HwHAdWdWE44NGQDf9VUrkAY4J--VgBCI6pGoEo0E2lfWrU4wdbaPCkqHQi25D4CgLox0E0PsjwI_Uzg6XEavVCTdzfH9-M3ec2_bwm5LzAJv1CH7mPHq-zt983aHUurao8JvOHNLDzazkLwJrYDPiPSdooIaRYmBzn6YooJqCVXiEiXKG_ySWgHSqGK2-58VXdg0cuHVoEd7Pp4i_m2buHpQRp2IvG8zSZci5A5KNhneSC1UcynoiEzTA2s3w0Ij_0_T7ryVY37gKKWWcJW8YFpSUaUAvKAIsTyYsqg72xvuVhs_KRF-P7gHI7CF8242pIlmGnmJm-vLeBIq3iyQokODAWZL70yS9d32btBnTaskE0l3yGMNeBFJfHmnxUKUbwl0RmINcBI64wP71Wqnkk1BLKrSztmdEdD4Mu-vXrjcnPlMDdNkHYfkQ1X6KMECtEB-6mRvyBVgZTqfG3VGsJPOiNDTA_hrAdxwWmtlGcTSkZvTn2x-PApvG3WCEpWhWD521TnXmcJTftsOTAqbtn6SuHExx6D7s6F5O5j-zbvkHzUQNlcYgFtZE-S1Mi1jwbJ5Un7OyKtm7X8VZJUfSLpQQSAUUZzURggSrRAbNDMmJuDIAQd-AsPwQj3r8aHcFAVMMRT_bHSkhUFkJPnPyuNOFDfYZxx5oyOCWOaPb5-tiBRrLaPjwR4WhBem1uMx-fxfYNGs7W1Q3SVvfUdjtO1lIgcMX0mjMbk1djPvZ-JfuBzY_KOYdOZQagE8r0tHQSkCji9nkfq5hpnpUBYnqG_oIzTaqY8_UzgWfiTGQ1ertV38nihZM__t_AKKXONqXy7bqbAL2erSA1mgBpyjgUACl6rK-LvWMsbbFpeSbBlh7-sbS0-0uLrMTCU9vCDCuVDIjiaIBtvXqufjOFIM3laB485kLoyHD1FErc2-iwA-B-Gw-ZXf60H2oxL9Zu3GcQs7FYlppJCMNqcWGXGnc4_l0FT0sbY1N6Rq9hgCLn0VRC-LTLjMa11IGPGOlVT6BPBfABIaZ00AKe_aEwOLYWuKIWB8HRCFkAFny2L__QFBKdp0vYI_n-T9vFdXKw8lHuo23FceJIg4Aa2fU3XzrkHyWtaj_9u3HUD5-SncWbIjp5lQnl5poXkcKiwv1lD3LJMUkyVg__N4QKJWyzT-BF7HyH9vh8THb4tEBtOObUyCfysAKSwlPojEHoMj7k5BvUS_Ds1fF4Fz15e2GVS0lkFODDT7q2Zpsct8YLVoobNnBLkbaTbUE2h7epgnILJfkFnOha8PKG58kDEe4kjonElnlW9HhnvIdxQ2JMboofEd7pEXl4-HjmakDt1jAIUoS6QjoaF7fglM8RhzrlgzVSRtkV2QjVOU5vwdCct8zmHoZUzIe5XUyE5HVg8gnYA8MMQ7EsmC796cohyDLhbO1H6d6VhXa74FSlIq3KUDoCD0T0Z67swTd_4QRTSdibope9W3xSFEp7tUxvHa5Qy-9QADWwdD2hRSLcsICIDmbe0A0YFpPtIqUHATSR-hH7CIW_ak_N89rTgnb-tzBM9PQq_TVCYIZxjLATJHZEg_HBTleQ-TAOQCQEZJQmQz9zApQ9xtDmy0YnSC7UQOG1kaXUqR8Yainze3JtrJ7dPhu2DTQshHeVhZOTNyvyWIAn4jhF0k2mTH257JMyoZii5ghyFqctQ3KTT9Q-mvGgKyhPBSwIZa5o0KLi4LZxEYa7vQLD107eaAgAET1phzqW4yhab486I_SI_UCWmDzYZ7uF5R3qw5XB1-bwSsPWSbNWQf3op16ckE80PCIugcnYXTGTY__4CA01Sb9-2eLo1QuDRaCJT-mmMxUf5i7g3mretfLF6gr6c4ATH59fGafHK6FptC7OEc-kqLCOu5oLKedstEgfd2k3Lzbnt3FEWSTDGVxbkeohUJH06oD6ZHwAKChaQpSd2fIGRMZsvik-DKDd7Sqf5aVQ_qFxPKMMCYWY8btqe91h31J1LwygOSOOLjdnxIz5O0nyW0LrCMZh_paUoxga5JeIWIwT2UVPIDQmmTkiOBVipyiUnSemM4lDCigjEDp1UbiHChX84xTFfuBef-HX4RUh8RFJnZrjNm7F42w7BzEKUS6WsSPG3x8rsL7JfWOkyQ3MUkxHIERfJWKGa9Q8GQxTgiHqQB542Ytci15LAsyFmAFxT2UHmdl8ri8RNJ3Z36Y5cJvGErKqocivKzV4IQjnksiJdbJFw9Qyd9loR2mFFKmP7Afe7Zh_vdkYsVxZ6sgzcgMcjTR-hD5YeE9jxcIObsmKw-hMloFwcF2NU_GEUfnE_NDLUxOMjI-FeglaKsVC3XVuupG0W_7MZWEomcCNacusb5bxtrzdXGgNMbe_8sw8DH63OSi9UnR1rA9nxz_n_KkWGUbNf8qzUfKDtJqFXIage3Ec_Q2Tt7zTl0DPddhBDbN6pJ60gaom3iiG5o0A_clXHGpKEvqcoPaojQKIWBySOmpMYlnQU_T-EgJqsgRtgOkdBzEls8Azzl_-T9DDv84AawB_fa8U44Osa4rTJ3zEMoNnLPlC0wUECdop3QxLrzvX5Gynli742H8ErR5riJqkc5JZQAk-_eJX3gTK3HovzJWiBralyb1ELWTrvWTsNSMlT6SuUfZ5jA8PvhmuQ7kri7hIWHotAUNkyJZRuCJs7gDaT4H6PJDFxHd7yk0jhFqMVtBByemL_-qbWoezv3_QPnL9_8FnS2HR0t5ObOrnVwVi85kLcwDbU1Om8czepHMR3kp3aQYFQnmx-4uV3NeAbxxMw3ndbs_hxXffV6VmXC7fTW0-i8NesdeKwwmz68BJ3GO96tuP5r139MlfQHBtsEwqSXj_4jJ7jxgsbyz-fhMdjYgFheRR71M667ylDipOWexLTHqS-syjDZWlshCY-dwbrsBjTOXtCRPFDF77ZCiOuKVSqYDL8BJTude5O20c8Dbc-RefriKJIx0gWw50lRzBSxZdHXh0XJvyB9M-SgLLzu5XE3G69qVCC3gioBtG1Ncz-ReyP7Hu9yxJDd9NI2y2aKXd85kkY0mDAT_EufhcL2DOnpXdfw74cNrcV-edm1z2wWZ4qneb21kEWz47eU2O5Cali8hZeFDE8v1tvndrAHIIFOJsR36fHlyfKefTmAqZNlHahDWOueWEytYCbAks9NNxMG8gUdmjgwEmTvOspwlUNj_QY3gFJRdyfjG31rLrl1NkywiGE0XSzXn-yM_djhQIJk3TVUbPwgmS-BeBxnvKsItwtgS4GmxRb2Mccl_UnXz9cqwgCfI7XyXoOM40RNcJYSrD38R0IZoKnjxE_aa-5Ro1hMXM_ibgpaNkdq1TCUPJhtcwaNLKQA-36jaT-Sx_ni43ALpAeLi8LD_ASm4ovub_X4Zjcydd6mlA-OdnA9TIQ_qPvIvApfb6fSVvv149jXxeEPvMpGRn48m3Sf-4eKK4V3JeGVz5oZuIyOTgf5q7w1H9mP9Q_eNUPFcfc4dDjCl22jiz7_XQrGtraFMVPus5qcK97Rk66HlzthPEUGmLcAMRwqJMRUcw_RmUBrt_zveLIAnXdMtxOFySnwFOjOTtyTh4-wTfArUDWXaE9Amx0LgbNJ5qK2IEM8PVlKc0_ck1rkGnr9U3bFRosS1R0CYIcd-dEuWk7OO3gUU_8iFWHL8tl2QTXhX3tDwQRmuoHmizkLb836qUbSmxP_cjcR3almVeJ7S9LNpo741iNg5Lel--2gP3rVYHBKVQaZhZjOhcumehdi13PWOS-X7PNb2Mt4xZYroaEjbgeBvPud5WE2P-DEx11R-cM1opeOdDlaRBoxLDFkTnq1iSwx2XINy5t6Z7RNVQjvcjNy_e3zq8La2pXIBbCz2rALd6_XO16QNRV0go42z1QoowC561mWUTmk-OAcaPZkOLGGV_z5KeIJbd4PSWmrwinLy-iRrm09F1sLC4yb4PTrWDr-SE-7kRFI3rf4909pioXqnzcJtMqoATUiN3fD6gR-G66dPjXpeDezI6BTxiahzlMe-ewT_LaSvpCLbVK_ULx6u1UtSD1sbDHIkMOT0zQafss4jx3nsMZdDT9cR5ddsHWSCu7IzKqPhHJq1gB5zZEXg6FKjIad0b5a5TmLO3IwABqtyETIWf-41adJGsMO7GWK4vX2-m6WAJg5OOVk1BD4Qn_LNk9S9DOXqtBsQvZWwIhhSsm7TOmRFg7V1mTQjPCATmiPUTRN85HYsvJ_FT-zKJHr5cNANMLrBGOJ_caehe-CqLWC7W2yc5MO3i-Qij9av7U7nCJdPYCHfe0Hq66swENTdNFllpQ4YD_ZVR28yzxod_ISoCh1oA3-8SKNvek4Q-BAd6aeNRY24CiFwyBN5fD8Bh_GHxsytZrdetIEDe0mrr6z1f9Q_o4tzDmdPvUHDYZEN27I9sUPB5vB7tL_aqXMzdQT8oyvb3HbmtWQKZ5vCPB3_u_NlUn4mTUFpsq3LChrJgpJzrMzHXFK2awP3v0ULytFJTA5pfMEvrXxqWngzEPJnGA7vvAX7gdZIWp-QmenBow-5EGbHLxX7HxqqWyUqQu4D2fBd3o1KoydIVYlBaOP1pF2c9stdsNF8wgvMy8SgubucS9H29r0V3ymYCtMkOxMEfIld1x1kGFrNMEEJk2uTg0HKV629UUmroafxow97_jdskb--Ffzi2VDq00OPqElfD3L5TqefAciuU9j_A1DkE0HYboE7bQbc2Dq6eZeMUAByxs4eWRrkqZFx7ZYjVPY6yMd4IgEkZ39l-8o6DFT_o04RGHGiakh07H4_OOBf1L_BExMZ5-0wPmKKJGejqg0LOe1De709-zGrQm0d66TzHFFYMV2sWi30iUJ-9DRKYUGxv4--M2yrUtaLk9YZWAf0Bq9uOmmN7k_3nSmHGfrydWmLb0XqsNGXHZq7IL2epgCmBqby8Gl59vzzgYiIKrdhqOv_Jy-iPPCG993GHqkOTOQt0sGhJkWqeJLQyTvsW6PqipVgdM7qxqo0hbVREXL8pjCASUaNMqBMgZwInKwDI4WO7VeqQkX-YbADKuz34QgwxE4S1MpRenvmWFVphJUMWU77WnlAx7Mg-3F6FEV5Lf_TmjlqrgX6IN_qQTF9eMxzvUX_n53q2PjzaqMey-GmKmvaCcS0F8_cRqMWR89Y9LxCDkQeTC3ZeHGJyBBQb6X4uo3OKu8LnRka4SCnOPgwVhPJpeGuYnfkEKog9zw9EVy5pmU1O3UIRaEhF5EvpONpi_229s81ehcGNfa_uuzcbbEkF_D1FHjzBH5-LDqlu8MLYY4QpxZe-R3CNf9-gV9MgVH2sj3yDwx0O-B71uTpwy7qSAGhx97Q5PTgdtqdwgXUWUHnSu2kRLVkHbRFYZlr1JEQ4bu4O5cZlkGZ_tS29DjMzAyUnE3v1I3Rh62C1hkgKuCqu2t0XEnhtMym5HUR5q8i8MdV4GUzbRPovhcJC0FCloCBHVBUWFArVSQuVeeh77lb0pAub0iqC7F2zLjsUrCe5KRAO04Dznw6bWwOefonW6zwQzlaJ6_OrCfv6Th7BOrt9HnPdQqAvGtz4kf6-gK6TrHeiUnUbDl_BsUok6fktYcks23lHyxY-YmSvBNxoO9OxXJRfwhBFkbmZyk68lrN2gTRNXBCusdk9bcUJ2lqauLRAO2Pos_bAnwlmJkF1myOJPZ9_nNPjLSJFoRZ4gZUsLggG9_DlInxXTjkRCGgui2KoajM6jBKLmPPiYQVyRrqacZUS8fIGxvvyHxGXQWdKFam5h41Rf5LACgs_CCOrIJVYsyHIkg590rmvW_9Wjd3mEMLeozqHESiAvP4GsiYVgJ7SjetSORem4j3ZOTZuv6Rbz7rRmOyFuWqdHWLgURKEGX_PQvIlvWpVrFnOHThUGkf6akb8TIpgIuzGwA5V1bMcGnOBD_p_dl4OAwXrA_TetT1oyj7p2PKAWLWb2GiDZX2olS6a4yzK7tggh9nBC7cOCKeelKUMGhwYLrMnY_DMeIbxwQEJHPb2ygvDXT8zVmKt93QOAZJLZddVmBMPfHXPS5uA6HsI0t_JK30n7uMDbAxf30fuJQcOgEitqsTJ1bI1ogg7itmoExHx-WJykNz0zV4267fHcxb9Y6i1PDr5H6ydx3jEwqXZkz8pFpAGlbRyLWMLcWxzzI3LSaHC_7h1C3q_NgH3wLgSWCa2lYBCpENO6J1KmJ-K_ydiV59-ThvNZnHA_3BBGwqNBdf7r_ChWWuP5J2ZfuGRin2EZfBzjjl_i3t2ifwNxiHuru7CafudM_CObcu_0lQ3tF_ywn2d-Oyh9EqNaYdOTA85AgaL-sMiTA9yE4hJrUNieRu-278IO0-U50qbMLcB0EbCTlRUnWssLoW0lvj3PnarQdzaYECZCrinnvc9jbvK50RiqO1Jr452GZQzKwxy4IU44SEgvZ3Kk1W1ihNCOHapKMMiNvkSyOa5geIFI0XhoAYkBA5tXtSR4_gsI6mwqzU_jNnB-gltx4bj0PBwZZ4EsXJB6SHAXG7a2FGsJL3EuoxgbmOlZXjXq2LSTMx7f9rHXIbkQV3sDTAXpLQTLeoUPP2V54KzUrl6vahO3irLUSM-eJksLBi8kwiP5OKLXvlQYYWTcyEmIuUjHraqMcY6kDeh5MKGCTQ4yy1plWgq80QhP0qh8mlCbPKH16URY8TJACmB8h0Bpnohj-pkA6PMkF2JptxUlCE2VUbleq06C_T3Cmpu8s1R-bZf7S9OJg2CmdwzV03-Q6YkXPLliavaRruwyEDjq45zEQXQUxLhbpvjibUVedjVyAkZn-_bnw8ymekMRbnKQwfMsCUYNjzpNFsiRvTLnQQJxLT4_oLl9H-DrOk27sdAnxqt9_UG8_CxiiStiOpnJPHLbH7e59YbA-PuSTHeHFdUPJgHg6FHe24ylXZSRbIZRXpArKGbhGGmHaRc_4ncZfvcwqTGEgcgNmqtIta9i2vAJAHT525RuUFcZjT_CtBecoMfMxtfBruV55_t-2b-A26TPNC-ZpWnBhr8yATWbj70Ae3yn2Y8aH9VcfuwebdbuABqvKjz1pbr5N3eRfKDqsM5UeC2y3z7g3gIaA_dFdJhXkoX1vWnEr8txNP8OH6kc0CvDhNGTzPk3nCRayCpSUBenGFSctitrUf0QspHeGFvKZdUMWtOUPLwcRGie09tH8ta9AR6QC5-IhWMRYAx8Ks6EbjEMlO48CAolezyeLWXJJd8JH-6GyJmZWQ6oFIqpJwdp2PCeq5SNT6JBmorPlVoq9Xx9A-uNp258OBZMPlyAaVBKhBx1NkT_fm2b5xi_2zq1ylGUkKV1I7G61bI4ZGElqr73uE1vWWw1wfx9lSQFROmnPeKPF36AACKemPTt4lTWUcRKCWO5amnn6a7WOBrZTHqEzQpNyJAuwcoQ8ptJuKLeWfAZgguMUbx4ZvSNQ6isfF7y7NbcZWdKMrWyruqCnCZ0-VIpCx4Uw_G3qjAj8DB98P3-LTFWGWaeoLYhEvg8VotmWx66S-5_mq8H97G40YHfI51x1ly0uO1cdAhF0_T5Xxu2zzKLiCfHoproVB6fRcfpQtoyXCDBpZ6liba6YUZGiAcos8IXzohuQfW0AoE1uluhCjK-INlyZKwOo6N7aZo2EDL6oXSTzW9znpNNZJP_8bRK1MxDUC-ODMXgURBYaSKDLyw8ASBCu7ysY0T17p2gJtFFSWdSpdABczroUiOH6cXpU5O-bV2zi27n8LY6A5gV2IfIy9dvYorIzElEs8O_N97Pdn4ZzDpE6S6FAD5AdMGtDS_Squ4jiLsOEXk8BAtyrmBcTPMgnLMUOskraOnY309VtSb81ZEwjiJ5bamPTi40XRKA834K5zB4ffS4iYHEVT_TvPvundB6FdbfKWgbNV0_F-b4WleQUp9Qe7Q2S5pO86SINXP2mrSsHVwf7hO0TI_ByaFBMLGal0IJwzClYyBaleSY3h3OX376vnqfH_NYa1ZRxpdkA3MC8Js0D5C_JKxQWGtoPTl2OFT62g-VRTEnp1Pbk-POrGDafI3dfwciOxB5WMofhaMpYMpv9CaD-13kB_d38FBjOjsCcDJirjVGgXrHOqL6BJJaxJq1xMOhh6_Tyn1gozGZ03CMsPCAO7UVhk3WtU4Nl4mU2d5bBHvbAOz5nXOknM2ggz10ubTFyNhRhAbRrtVlnMUEHkDqa0WVu2tHjnNymjXxCQs4FYMtcJeUsYnkG6gCpbbi1swxIFBvOFolZ6qNX5P6-n5KqLD-Wl_KEa0SPn36AyXYog1pPYabKPOMQ_CL7j3jqzKPheADPtpmDuK6wu8NYiLEYNAcpBtbDORPpAhkJH2pkxRi1Q8M-s-SO452LvY88PtMusphZwGnnP_PUtcQ8FoJax5vK-73oZNGdEbjQMRFu_whI0BdFT-uCFNJ1HHhfgUlHEaxTfTwHp0FqIMXA6a1WUb2ifpsjg6HLx_-F2BlIu3XfW4MUY5h6OYF0J_HD6U3YvMlSY1xQbTOxQlkQ2mOv0FhqEU53od2i88PP0HdB2pizNWlqD-u8AV2zbkQNbXu9st8IceR_hF6ql4E1peUh0-LzT0_9YbeuyyROkyQE13v6s2iY4BE6an02iYsbjF4PgspJ5Ft86h3JzgTdNjgyyFAYO2cmZ9r1GcyoZxcb-t-JvaHGvsxsrnhcMZLJleaDgwQaWwl1Mgy7fSLCbZB4ZMpJcsyiB_My1bLIZ15Y5zgGegueqh5WnRpuDQC5oUpshBNe8uSl1A-GcZEIWksgIIq6x5eEkEKqJNI0dJeVvG3YpTGDFL64G7_o-96zO7e8hbifHu15GPVdlv-ylES312qEUHlZWLtGNjPQjDzHNChBxQtvfiU3gmYBE9ySn1VFKaPVudVaOdtC-VuvOFF78u-2VvE5Q2wOobCnXdciyaZKDZg6JgE8k_VFFj0yovCTcAj7T16Hd6Pj2_LjKkpABDNfmCG4pWBhtCUzChyGIGKDGl557Ghbq2BKivm-wqdAlVzaRwANWIMa4h6xPZKkx3t-ZJNea35_IK2p-ZLnoMuuFuKQjjp8lSMKMuYMU_IQv4HjfAgrwaIxHYTp_HIddyGqLYsSrHmiT1vP14yot45Qh8fot0eOIhf7XIP__7gQF-tdxJErCezf1xMN0dbt2CPXz-LX6zxJNUE6tNSxa6aqZZjsQZ_xXMkTzdcZByUvGHiyrVJvuL-Og57MfmY-3Nop1Bfmm4gupyxBuLIHi_irSUDc2EqfgzCPlypx9rwNcrgi8WiUVG_fKtU2Qvvc1R4LGfSUknCm0oTgAZDp99aOnejEZtGPvHxHsEoFhEf-bQCRA-SFBIOkI2UntTdHAJwPxHzt-1PxlCenp8DdhIenQDgRgPKAXRXXBDzaEnc718CJbE92lu68ag5d0S8sJEKXsCzoUbX4_lfzyusovx1uzUthc1oym7GCjBMQvZt3PEZ39qmPWgv3XigDlrsakLcR5DlPxfOn9Lfli-dXah8JpgGeYxbbci-s3ize05VrzEexB4oP0Wk5XZgX2CEkf1bUzgO3rs66PShDc85_KOGMkpxQ4f2JNJzWrAmQul6jXjy832FaaWkjrPXr05N9MEe8eV90KA6XrSVETmN4Pw3Qiop4VKXLpvxFxVFwnWrzCGA_BxHVp5yM7x0Q_Gn-c5szy6xnMHsHoC6qcswST4peOrg4-Kbgv3jkN3UwIt0D2KD55w4N7r9vmfE456XAW1YAHKqnB_1o57M7wRAsE3V5sO1Y0r32utx-9tVG2MSJhdmAq8PUph_5rRlruvWItLAjjb66b6Dq6_jKrLJfH5lgqIggcoc2BR7VRZvS1WW8k1HfPtMirdAUQ7DSbq5r3sI5CIE9P8IRaQXJD7oO9msLLUxG3-JFY4nLxKfbawk6xwqOYldNeyx59C3pY44wzOs9gPrRp_Gt61J_UYI2H8Kqlxs6ODB2wZcHSZS8LzVAj0nzEsgiFKlR0zV5pVjvcoTn4r7XFYu6I81uwUjz3P06c4ZQJMwHwu2hYZ2rnRztWi7dNDYoz1YI0bQ13Nh8-HYQ-8ohn0ZYZPR5kvCTKzx87M9VGUzACCc_RScArhIfjyBeI8RtFeEuKxw2OjOa-euTQL5sUa04O0NeNJGdwNlNzVW2o5X1_ZEuIrlHjNQvfDCs07sLhLP86DSg_-jOpG70npfMRsI_l1_G0EILGI6fuK2hBBLxHWzw5Qgg6iZOtsSDiZzxUoMELALQok5Db1GomNEff950DEkFRJhhmGjBXeaGn_qcbVxBqr0SFiHlpcM2JqAJGRah5EbhDn-sXNJFxNY1IyDpr4ohfOlp4wZGad2aszrjq9sgsxqAhc9RolSadJBuz_6eVWk1gWTnUosiVjB74DenNBxd5JQTVki0Bwm0LVCXH0EIDOJ3GxiFRupaOopQbpcfMZdBTcJuQCPNfm5Vei8fzoEdhtmbyRVEbKvyV-lHzngq85mzOfPS7Gmu-NEoPs4UFebLdss-ZAjT5knNzkNdVC5BDdCjHtBSHRIi8Bq8j88_lkaupzlwVYNkZS24Z_6MUjAzrtQiIST74DfTMUesAJRSkRsJ8yKhLLOJzukl6ExD0CZPi1cmSJCo1kNg5o_jlNtkHvmRzjW_OgxkMJtwIViyutoMR0FZ00bVMoMnXgG8_NyWCcDAnRzg-3fv1C5IVzPaDRatMCq1XlCVA60ADPrpx37ogdYxmnizpYIzRNnsPLk3y_g-zWmrAyYTJMilTJr4kI_KQsrHZExvawimbj5rvGUoTC5-ctsmpK4aW3DoAl6BUWO7iqW7F-Rk3tkD49wrC4Z4JotJNDeCgPv-YRB8dszTkAsnczipozhtsPNhKMMPGaj2UsqMy1VuLyq7JaeHEYjBLvCp7HICwr1M93j3VyekAoH2pge-xe_dzRw6tFcoqTE9uvSJx5VOAqFU4E5l07kFSS9aREQ-_L2mpLhjKSXOiHrkzRFqFFQ0Sp7RYgjXKB4TWxmI-v1CnG7yyx3_Bk3I7WoNW5oo_LL7RPo5FW7C32vRnmBzX-eh6Mt0Q7LnctGI550uNSNlHlD4mifnymG5ieMCO8IM7R9DjDtZnr4Z8SZNQLBpdU8ZniQfW4PYe7rVVgekqTBEmhV21goHr7KINwlsj15XRO9XQ4DLGyXJj0g9GuIDgdKI1fdWDqJKetDXxAobKUM0mQLF1r3WCKQ9BVqQ0NcXaNRQLI3wJc5H2bwVUCQh7jvaZebFSOQXkIOHugkoJ00__lSo-OkER9Tv9KepiYX6bNr2rShkud7Spj8GozE-24ofWisAZEoSOvUdo4taoDgnc8TP6j-Jk8MlPUCC9pIPe5kdBtpFCPDaW7ijA0dJUGj9P75M_NwSdgZZNA-a1Xr7sUieA8Un8Tl8U3rbmTLv6RG5IiLoDvIb33cpqTnbWCbWiExURwu_p5gth6QXJ-91GvirNOvzdDYVGpu5c4EvhjOhkip51Pvncrp8uNGCnW7XPSpBpYssXrOzPDUAL77lKGhNbBDLFqlbh9ciOe7UuUx5UPyXJbrW7dnzdE02W1l-8vjeAYftbuxRtm3vRBAOn_288mNffCP5Bb94n0gsOMAIwtitfx9dsmM9SikxeydkGfybU4GtjRCgQTB5FCLbXaoqAcsDYrYcbpelBMW6wTPXYGMBB3GtErKZnolQ_v5DGSD2z18wrTs_9KkS8FUQEmbZ0TpYlfiRQHKswRvXvP5eMxZhIRY_DQ2M2eAv5ad-DlBGc9ZJ7HENa8GlAhiBbF3DzRN0U9FAJswXUPvfN3VeJ8PyxCFn3MwpOIRKYu7P2cVgabyvFJuapg1H9fyWRJFsGihwQ2jOoY5rSmmc3YoKjPoXTRStJdKRWtY0c9MoJGpPTqtA22mlpRBzNQ43LEjZdMgGHo-bCslCFq_4EzdBcJ7zJCPqDhCd0yoxsahU5L0TZs1AeB2uJE314uUX82-in0d91TvO_jbpjWvq_fYZKaplO5qqbJLdO-tyZXAcjWY20AzDZFAdTFf51trbP4pxncOhCIK8HoZ24VWEFl7hH_iz9SX75A8ZVv2cqEKxCPhNSADWo8W8XKCwvvxJh_g4DptuvFffJj3ttvnXthmwiuM1Id1LPO52joN-1oZ_1kLnGRPMKtRhRA5ae30YVMX3VFbeAGuzQQUHs5VV66HNcSwLQcp9nXA29sAWkuE_vvXo8l-NTV_l0epogZt2ur6m1smRITqz4_ekWTtQMCs2wxFzg7vU2gf1zOAhDnA16jDzVYBIYYqDZ1xtSv6yTyg2QxuzueKl-vNx6AGXdbo6KfUfc92ArmaalJHl86zzoLaNp4yTHIfO1GpenVZzfhxOtQ7QHUNIUdD6TDrCyALIhd_7mO90K6zF4g0OFV-auPJ5H13ViNV58VlxXrQx8XYlNt2RGAIOYv7l_NNlnyGDcCSW4OWe5Pd2RBbBJXkq1cN5agwmWHf6JGcVx0l91K6Gh1BCUvMpoNyEVd39tz1X5ZaAx0VZi8qvrqNI0Fl_0slNfM8mVC10q1CEifJSAlcw6W_Oy6bjzNdcg2a54n3lCuXibqUhS9oU1oshDMSgIERildJlHivBJFIXsiTkTH4q_sRYpRQXQ7XL7IP-kzq9XHDXDCQlA2NRSYxnp5b03McXFk1_IyWhYIHuLouKBL2iuMzSuY1JFkkmRIIedOyaGsl58jOqo0ReR39eIfAaFuPmu3VtiZPGnGMfU8A51irurkK1arQG9du4BptH8zUR5C3VFVNHPAkf0HTSqboS-3vd2VdyoOfknfT8cu_lPM-4hbl2UKPgHfcTTquvNmihXZrA9RvPW9d0B2XEtmtZfR_JSQ6AvwjhznVPxgAdq0HPrRO2RCYT2gk7UvQuTecpuGCGOr9mzOJvo-z1FHvwrEw0CiJ7P91uY6pvfS31CP0ZN65zk-RVPVnLwY7P8xmvp987e5c82wmlFB97lDdjzoYU3rExjrEZPnt5aD_7ZZ-HHC9nmcxqVyfNvOvexI5NVBHNqCy-JORjnyhkr_gITI5u2iM7HV_Y3c7QRmuLhIgjN3VQsNx87PO91jx4VoFhdLCmnukQDI4MmsTEhNtrL0EESfxtxfSc237-F2MdpGjEJV8xVfgDPqFbjD0gWehgo1Gx-DDfcjyJnSjcnH5Aze96HBI7H-NHc5PeG9Hz2COgEq6WMWZqJ9UVYF2cyoEE162wXhrIHiFtNIGHFcgHFbyY3TLZqjN8uNbKw5Fbp_x5KpaH7uEdP7qfkpRQhV_1zamxDAkYnC0Cap5pvlNcxUnNCuAw5OWu7wyr33lCT8kGWPv9OcsCoJhpl-1CpcsywAu2_QSnvR819M1WipNWlQThzhVupM2gKwgl5Qx6NByVoShLoo4vugX_QSat05wVyERFFmN8DaTGOizC6i_L7-TiLGfgCLbLmi55hXWjOHn3804CrAuCDGHy_r81clwEpHJkrFwo7yaUeo77atIErv2qjLUcsEzsuZsIG2E0f5fezdfT2nYoH8AVEanZit0rjPiaT7B0R_DglrQNP7FG4eaT2KO9pPsv5Jlwnw0WTmZmOoylRYK-dbC--R3QQc3IVsrlU2jMX_0gCyCV3g4KC34yF5WnS5oq9ZlBhOwKs-XkRjFX3GRb6t9mtybxLB5p9P5eCAXiwCp5RWXp-n-Fli3PMS4i-jxiGAvo7uFp_VfBXmVfysySKzvsYkgVxPD2WhUPLfnDoxu8PAiKdl0XyOCaNdD2Epct3aaa4kWLavsQZxwsbVjRDxlwfabwJZq_9x_DPMnrbEEzcPi1EzDj1Z5GaQ8AtdhiXLVqQs4xByYP1QhqknNSOt5gUtG-y4i06XSGYcWqO1dAQNl9PZ-IO4GqUM4b3iJgINaLPln6QO5c27aS-qBt26B83rz080t5JU06ShYdCaHsr3dyPbWKBIZCP4m-9f28oOKr-XvgARntaiTdIpkhK6o9WgjmiiNaDCYGR3trHHpxex8AqLpQiHgNDJl8A0BHTh59iJxxkzZulJ6i9zDmBKikbaxgS_nFPQJfDKGqZZYrmVvmGCdZAXgypE-_KwLzQbVar1oe-7ectwefjMRZDuK94y-3o0HXh2wThFyE-Pz9Tzshvvk6xa_pbqw6L8ivUqlwpY_s9BhRqn1yYQrOyX1f9jcCZXHh8GuInI6ZkmyblabltHYrQMxyPpCsNRSNpett24jJTZuH5GTebVVhTcQfrl1GsUvtKwoyeB_x1di0dgaLiaX0z68XOn4VV_X_60vGGRXEk5amBUwPouBkm6Ef3QkIlW3pUT7F4kBZ4yHVX86W4s0CpMGLDLjc9ervqxhaBPCLIqi-PHKbloHadQ4YqC68rtzOmcX9JWMVBv3ojvnF0Iqd9wsaPc2_ssRLTo8A2Uph-Qfk0zZwBeWo6DsbtxbvlBh57-qx0eSfyc3xQeLrl6zI5XRycY2AZfr97jBX4uReBawdxrRzMdLbhxFDaTT1yiz9jDJyFcuIHp2JET5vM-6tCZNpqpFbdOFVFSVvnk04GdJRmGm3vTXlanXl5sGKH9TME0BitvmdXFkCtPoy0cTWOKJ3CdOK6qSiGUXoHhzre0eM0UNhWDEgtB3X1a3fLhOWM0QpKhCtg5jnlv7Zx4W5Ia_efQtHuBfXv60O767a_O-uf-kOnpVO14JwPbp5H_MQVyjI7okCf1KxA5wOvxRlrQ961wxLTY6XwRI1B95_kxGD3FA2vHuWqnpJGZ2vS5BaLm4QZgBfKTFThTywfu_3d2TOC0jcyyFbb5gvSKJLQr7IReGgyNWPbcTKp34utWwdzt9W_BgQR3404g9LNABQvm_GNAo828zMMuQOKxpHtoanlaGNyRUou4F9feBC2js-5xZ7kOTlt2GOtD4gUNU8CIR04x7XWHLNNQsH6k010MUkJU1KDlwZbqJKxqzqRfHFtQjs5bYQsqGlxg_cAn9KS6OGcvNVTMw4mLZfNYgTZ4are45CPQO_TxzRgbC5GenGV2OevHUK7K2iQdbzQ8NKyxDm3tnPF1cc2WT10I4sVbzG2rLxo-AEwx6aUEUCeaPJsIKW6C-kdm8J4EapXz7v2XqTc9y6OcsSPCieDKAUBD3orRAEGaA1AoH-iLr8Lnpmpo1meDKN-u1Qq1acAfqnSSlhyoDH4P9XclqXpbVWxrh3TO3sWv-kl_gnPEXQqqLHJZOsCCgooFhzbP2NjHFfx-7O6Ob0CpBzq41eEVwiXO508bpFQG6esamyyM9FnoscWauDDxugXB1NzfWryK74z-zVOWczbtzzrmIXIeLkRygpOcHoA8ursVrlFZxFjNYrQf5ksG0SZ0qFDeCncPvsrpNlI0ZH4ea_3wTA8C1sgoJ4IEnirBtVeYhrCLKdBYSy_N9ZjaW-mc8Yv1G7hj97-y5cgCOsueC--2X9B2fSeJ8KDQUlB1Ku5XXDFatD9sccvg9BafGNm-2l-uOX_ThSBGlT8WySXgIpWKNVsHTdFXqFcgGBAY4PilT4n6ox_ASfE4oWBmTLv3sBukwvCqOWCExUgtEcBi6tqX3Gg1EeHH_eeARoXX-L986-qT13vDWOgTuQTBcV2uJPvJUnDf0dOTaGCogxh8o_JDcvJH--E70DFp8rR8Wd91JYK3SxBBKVN-P1lUVnPNQM1hCuNHYJkk3z4YPzJcO2fksW6LzSH6H5C2KPQL7ewgMIsnOy_Jnj4sq99YTEhxudH-tMtasmY0SZ3qarqzXiTH_i9hn-R-fl4Z4Qns_C5DsLZY_zjd9812ExMaNIxSHc-ad6QnCIlqt1JY5Yy9trUKgpT1u8BgWf0blJvMiwjmY7j8UH0Bt6HwWMd2fKq0F3Vd4jnqmsGUvop_w5pDdBlmM_JxT2uvyNOaEgnCf-4dlihwA_H0PqJYuWdjMYvOTvlrAtS05e2KZ5xVKh0SgvZ8aHgIcaaYLAdtgQJmv43L3FcG5JetmR5ToR-rT5ydwr1BviUWGtHKrSgtWl8RUf3zN9vgLv3m13H9DbnpltcdLrgDHl6AzOMa45nWfaI7D-xzHPYD3RVy_-cnFLP4jYscNc1QFJKJVJxvdI3hMfjnk1y82IG53iLozayurHfHtI3hYLceWL_NWia3qkbnrCvJ0_fGGqTg075x3Gs461jKOepnTJm_zGBsPK5XXly21buHK7WcPEjgfS2qAsciU1ciaZPOITkG09mQ5TJeT7jE1LnoYD640RTbAaY0aZXTsfUJsugw5Cx-Szf2hqsvuOQlvdtgFgAf1sXbjgvSIqtV35FYp4BvxzsMEURxPlhmDwdgbQskYn4NzzuLg8TVouc8k1BTWHlQeMk39pni23hFUBjTCBTai6lC7FgNo3PEZ14Fmpr6bgAeR6LSt2arp__YAwMbjj0KlAQUKvw8yp01kR9Ejj0fRYkyrh0KY9N_VaUrv7fZeYVawvRo0X2S93weUNEUTU4zsUhpU8z6h6PEt-UVImChMmhvNavStSq8C7PMVe50juV8QcWG-B1BcyGZzWwwH6eVPf1KcfJInOzzw1JIc5dzCkcXGvZOGjDvEmh5P8CIRl7nxDZvIv1reKFyVrua8MjWoq3pj09UaQoCfo3VMwpi-VItJiqM1NDdRYpNZY89FThOdOtantQsyTftzG78QE8HQY7UbI9_INGTyHiZapqXMDkABqfTQ0r9XTYDzrAGPA591FqQ7JkgjV4vd8Od3VjSf8vFv8GUGrbgy32SvuTXtM7Li7ubE25Euvn1stHiNiOjzVTKzlGUN4F_fnGjppNjylU66yYb2dQesaf_Kl6x59FA9mujg_4BPTOa1vjhPEItgG7hNUKU_i6jiMoFxSXwiozIX-uF9OM4gG74yjO13GoTuJ7NMNW0y45zMgX9gIa3GjiRuTJc8LxR8R5sg4rQ9Q39lNgylD8g_vXB4grSZG9czWY1i93QxdE0V_qx5wz6Gn8paN9HMoj6elgk6E_lMQiL5Pm9Sy9EZ6QGiNQJRY4nmf1xAafTaWkqHA0o7PDcUI40fZEqvgol7ut7V-yoVfFT1rtyTERLAlzrE8ws7Dut1wPoBAn2kIes-3d4MxPRttxkBg7wBISC9hOc1ZhUQIL80Qg8g6wAEFoh_JZdK2a24VxQ0U_3J-OhRE_IXLtztajc4lc-jRG694_NpfEC7c_Ojp5YcEvUfkEywHf1KPbZHRaKPA5UqqALvc6G4JTVcuxBRrk63Q2GtxhLAsZ7R_z1gWWvXdcFTm-YdUvV84W0DoAWK1Tra8idpf6z2n2P9qf7j58-x26aczYYefkpvE8e4iNw-iGW3u-mMgA47F3MLgMm53yP07zk10PCBhs774fvQEvIxFyNeL9ahIYrmzdk3-NeJNf_x4TTtllWqGZiqXta-VlfkqYlki21ThJt4wzocS4PhPVzJbBlIAI5QvniLHohrd8TKtS-n4KwFKKcFbKO63F5RK5e4RvP_-nMoaTPfqKGArd9x_jc1c-OTAYFXc2Tnp9mby0H4tTLb_rJgKux4cQEanG1ZJ6oQPelajtq1iLaDdyp_sYa7rsDedhUNFa725cZH4b1-FqSjq3SgZTaYP1LUKpetsoQcRhzZ_b59hcE-CCX3XhWwiX7DaMxFewy3QQWsULk7vNs5aP-vj8m6b70My8wLzMrSvSfC6cJ3oiz6opHvtg-FCUXD5aYMOmPt7YjtxRpkw4MTQXCIW5TVh3TYLFXNxpmfZ1hgPDdFagVHTSbmolr8aUEMJIoG1wLutP6XKD24v-_HUkM69Vc1L0DA4fYtP9adjqnd4xgxhEtpZyNz5U4Wez7voCqgpIPF2SF0Rfo7_u5bNnbD3bRi3i5R5Qbk3emMq2tl7qNq1iJuxnZXGaHUUZbxaEr8nKnpTHe5O8GrvsV2-eNsgjT1kwb-3_PGqKMwev-r61XMukm7UKCJ2Sk_gGy9DMpDGh30MmhyqCfUrispJS1XrUaOpooqf04gd6dRklbUJa47dioN1tSQK8mKMN5_8oy3xRDmSzx2pNVj0rOrz7hDnGFUFbfu4w-GK19rhhqklln9Bsznq11nt7atzoS0QD_GCF58iih1C36wffNPsn-iANgajnVvWRaL5-PP5XMWAGSOO9qXralPDBNdKBesgLvIbPBPT8cBolFsk62_yGz3gFmiQfYcOjtkDznixi4Mhu5bhvjHh8oVXprdAlK_8Ymbaxj1MDCOE64-prtl5JtS58hHhC45eGnx1GQCx35LuXy5byc7Dpt_jnf9XrskAoq6d3SOacpO_9BgWWFIeyDb7NxX2TSEn58vnIjCLxvE3XRv7tvc7oovn_Weg6GwUPiDLQVTH6o9v27NSwvXB3v9VCTphA5_q34Bu4ckuPinvyo8HK3QkY-p0wiybF01QH8IdKNOVCKBvK_IxgKnOeLcRDr922TW8DoRhaqsw0idpEtwPBUC6wmp79BaZNTTppb-wg0oMVteDgXsKSmqPTVYk9fdb4bjZQMspoBiDBhpKMArVTcR73FuGgRCa97KERrsLe_dnUlS0Y"};
+async function kilidiAc(anahtar){
+  const b = t => Uint8Array.from(atob(t.replace(/-/g, "+").replace(/_/g, "/")), ch => ch.charCodeAt(0));
+  const k = await crypto.subtle.importKey("raw", b(anahtar), "AES-GCM", false, ["decrypt"]);
+  const o = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name: "AES-GCM", iv: b(KILIT.iv)}, k, b(KILIT.veri))));
+  SAHA = o.saha; GEO = o.geo;
+}
+async function giris(aday){
+  let a = String(aday || "").trim(); if(a.includes("#")) a = a.slice(a.indexOf("#") + 1);
+  try{ if(!a) throw 0; await kilidiAc(a); }
+  catch(e){ document.getElementById("kilit").hidden = false; document.getElementById("kilitNot").textContent = a ? "Bu anahtar açmadı." : ""; return; }
+  try{ localStorage.setItem("sablon-anahtar", a); }catch(e){}
+  document.getElementById("kilit").hidden = true; document.getElementById("uygulama").hidden = false;
+  BASLAT();
+}
+document.getElementById("kilitAc").onclick = () => giris(document.getElementById("kilitGiris").value);
+let kayitli = ""; try{ kayitli = localStorage.getItem("sablon-anahtar") || ""; }catch(e){}
+giris(location.hash.slice(1) || kayitli);
+</script>
+
+</body></html>
